@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "discourse-scraper"
+version = "0.1.0"
+description = "This is a scraper for discourse based web forums - mainly to scrape help.galaxyproject.org"
+authors = ["Uwe Winter <uwwint@gmail.com>"]
+license = "GPL V3"
+
+[tool.poetry.dependencies]
+python = "3.11"
+requests = "^2.31.0"
+pandas = "^2.1.1"
+pyarrow = "^13.0.0"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
