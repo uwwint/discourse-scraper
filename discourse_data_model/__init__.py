@@ -7,6 +7,8 @@ import pandas as pd
 import json
 import re
 from html import unescape
+from bs4 import BeautifulSoup
+
 
 
 @dataclass
@@ -284,9 +286,53 @@ class TopicData:
         return posts_until_solution
 
     @staticmethod
-    def clean_html(raw_html: str) -> str:
+    def clean_html_text(soup: BeautifulSoup):
+        # Process quote aside tags
+        for quote in soup.select('aside.quote'):
+            blockquote_content = quote.find('blockquote').get_text(strip=True)
+            quote.replace_with(f"@quote\n{blockquote_content}")
+
+        # Remove all a.anchor elements
+        for anchor in soup.select('a.anchor'):
+            anchor.decompose()
+
+        for a_tag in soup.find_all('a'):
+            text = a_tag.get_text()
+            href = a_tag.get('href', '')
+
+            if text in href:
+                a_tag.replace_with(f"@link {href}")
+            else:
+                a_tag.replace_with(f"{text} (@link {href})")
+
+        # Replace all img tags with their alt text
+        for img in soup.find_all('img'):
+            alt_text = img.get('alt', '')
+            img.replace_with(alt_text)
+
+        # Remove all svg elements
+        for svg in soup.find_all('svg'):
+            svg.decompose()
+
+    @staticmethod
+    def clean_html(raw_html: str, posts: List[Post]) -> str:
+        soup = BeautifulSoup(raw_html, 'html.parser')
+
+        # Process a.mention tags
+        for tag in soup.select('a.mention'):
+            # Check if the content matches the username of the first post's creator
+            if tag.get_text()[1:] == posts[0].username:
+                tag.replace_with('@user')
+            else:
+                tag.replace_with('@system')
+
+        TopicData.clean_html_text(soup)
+
+
+        # Remove all remaining HTML tags
         cleanr = re.compile('<.*?>')
-        cleantext = re.sub(cleanr, '', raw_html)
+        cleantext = re.sub(cleanr, '', str(soup))
+
         return unescape(cleantext)
 
     def posts_to_dict(self, posts: List[Post]) -> List[Dict]:
@@ -298,7 +344,7 @@ class TopicData:
 
         for post in posts:
             role = "user" if post.username == first_post_username else "system"
-            text = self.clean_html(post.cooked)
+            text = self.clean_html(post.cooked,posts)
             transformed_posts.append({"role": role, "text": text})
 
         return transformed_posts
@@ -381,7 +427,7 @@ if __name__ == "__main__":
         return df
 
     # Usage
-    directory_path = '../data/'  # replace with your directory path
+    directory_path = '../data/galaxyproject/'  # replace with your directory path
     topics = load_and_parse_json_files_from_directory(directory_path)
     df = create_dataframe_from_topicdata(topics)
     df_accepted = df[df['accepted_answer']]
@@ -402,4 +448,7 @@ if __name__ == "__main__":
 
         # Generate the post JSON and append it to the list
         sol_post = topic_data.get_solution_post_dict()
+        sol_post = [sol_post[0],sol_post[-1]]
         posts_json_list.append(sol_post)
+
+    json.dump(posts_json_list,open("../out/data.json","w"))
