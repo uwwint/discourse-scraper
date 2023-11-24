@@ -8,15 +8,14 @@ from trl import SFTTrainer
 import time
 
 # Load conversation dataset
-conv_dataframe = pd.read_csv("../data/conversations-galaxy-q-a.csv", sep="\t")
+conv_dataframe = pd.read_csv("../data/all-conv-galaxy-q-a.csv", sep="\t")
 print("Size of data: {}".format(len(conv_dataframe)))
-#conv_dataframe = conv_dataframe[:40]
+
 # Split dataset into training and evaluation sets
-tr_index = 1200
+tr_index = 1800
 final_index = len(conv_dataframe)
 tr_conv = conv_dataframe[:tr_index]
 eval_conv = conv_dataframe[tr_index + 1: final_index]
-
 print("Size of tr/te: {}/{}".format(len(tr_conv), len(eval_conv)))
 dataset = Dataset.from_pandas(tr_conv).train_test_split(test_size=0.2, seed=42)
 
@@ -36,9 +35,13 @@ tokenizer = AutoTokenizer.from_pretrained(model_name)
 tokenizer.pad_token = tokenizer.eos_token
 tokenizer.padding_side = "right"
 
+#target_modules = ['q_proj','k_proj','v_proj','o_proj','gate_proj','down_proj','up_proj','lm_head']
+#target_modules = ['q_proj','v_proj', 'k_proj', 'o_proj']
+target_modules = ["q_proj","v_proj"]
+
 # Load LoRA configuration
-peft_config = LoraConfig(lora_alpha=32, lora_dropout=0.1, r=8, bias="none", task_type="CAUSAL_LM",
-                          target_modules=["q_proj", "v_proj"])
+peft_config = LoraConfig(lora_alpha=32, lora_dropout=0.1, r=64, bias="none", task_type="CAUSAL_LM",
+                          target_modules=target_modules)
 
 print("Extracting parameter efficient model ...")
 start_time = time.time()
@@ -47,7 +50,7 @@ end_time = time.time()
 refined_model.print_trainable_parameters()
 print(f"PEFT loading time: {end_time - start_time} seconds")
 
-base_dir = "llama"
+base_dir = "llama-linear-layers-all-conv"
 
 print("Setting up Training arguments ...")
 
@@ -62,11 +65,11 @@ training_arguments = TrainingArguments(
     optim="adamw_hf",
     save_steps=50,
     logging_steps=50,
-    learning_rate=1e-4,
     eval_steps=50,
+    learning_rate=1e-4,
     fp16=True,
     max_grad_norm=0.3,
-    num_train_epochs=5,
+    num_train_epochs=4,
     warmup_ratio=0.03,
     lr_scheduler_type="constant",
     report_to="tensorboard"
@@ -81,7 +84,7 @@ trainer = SFTTrainer(
     model=refined_model,
     train_dataset=dataset['train'],
     eval_dataset=dataset['test'],
-    peft_config=peft_config,
+    #peft_config=peft_config,
     dataset_text_field="conversations",
     max_seq_length=700,
     tokenizer=tokenizer,
@@ -93,7 +96,10 @@ print(f"SFTTTrainer setting up time: {end_time - start_time} seconds")
 
 print("Start training ...")
 trainer.train()
+trainer.save_model()
 
 # Save the refined model
-refined_model.config.to_json_file("saved-model/config.json")
-refined_model.save_pretrained('saved-model')
+#refined_model.config.to_json_file("saved-model/config.json")
+#refined_model.save_pretrained('saved-model')
+
+print("Finished training ...")
