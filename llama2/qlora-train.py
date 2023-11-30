@@ -50,7 +50,7 @@ end_time = time.time()
 refined_model.print_trainable_parameters()
 print(f"PEFT loading time: {end_time - start_time} seconds")
 
-base_dir = "llama-linear-layers-all-conv"
+base_dir = "llama-linear-layers-all-conv-Nov-30-2"
 
 print("Setting up Training arguments ...")
 
@@ -84,7 +84,7 @@ trainer = SFTTrainer(
     model=refined_model,
     train_dataset=dataset['train'],
     eval_dataset=dataset['test'],
-    #peft_config=peft_config,
+    peft_config=peft_config,
     dataset_text_field="conversations",
     max_seq_length=700,
     tokenizer=tokenizer,
