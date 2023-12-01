@@ -50,7 +50,7 @@ end_time = time.time()
 refined_model.print_trainable_parameters()
 print(f"PEFT loading time: {end_time - start_time} seconds")
 
-base_dir = "llama-linear-layers-all-conv-Nov-30-2"
+base_dir = "llama-linear-layers-all-conv-Dec-01-2"
 
 print("Setting up Training arguments ...")
 
@@ -63,13 +63,13 @@ training_arguments = TrainingArguments(
     gradient_accumulation_steps=1,
     per_device_eval_batch_size=8,
     optim="adamw_hf",
-    save_steps=50,
-    logging_steps=50,
-    eval_steps=50,
+    save_steps=100,
+    logging_steps=100,
+    eval_steps=100,
     learning_rate=1e-4,
     fp16=True,
     max_grad_norm=0.3,
-    num_train_epochs=4,
+    num_train_epochs=8,
     warmup_ratio=0.03,
     lr_scheduler_type="constant",
     report_to="tensorboard"
