@@ -1,4 +1,5 @@
 import os
+import sys
 import torch
 import pandas as pd
 from datasets import load_dataset, Dataset
@@ -9,19 +10,35 @@ import time
 import datetime
 
 # Load conversation dataset
-conv_dataframe = pd.read_csv("../data/conversations-galaxy-q-a.csv", sep="\t")
-print("Size of data: {}".format(len(conv_dataframe)))
+max_token_size = 700
 
-# Split dataset into training and evaluation sets
-tr_index = 1000
-final_index = len(conv_dataframe)
-tr_conv = conv_dataframe[:tr_index]
-eval_conv = conv_dataframe[tr_index + 1: final_index]
+galaxy_conv_dataframe = pd.read_csv("../data/conversations-galaxy-q-a.csv", sep="\t")
+galaxy_conv_dataframe = galaxy_conv_dataframe[galaxy_conv_dataframe["tokens"] <= max_token_size]
+
+biostar_conv_dataframe = pd.read_csv("../data/conversations-biostars-q-a.csv", sep="\t")
+biostar_conv_dataframe = biostar_conv_dataframe[biostar_conv_dataframe["tokens"] <= max_token_size]
+
+print("Size of Galaxy conversation data: {}".format(len(galaxy_conv_dataframe)))
+print("Size of Biostars conversation data: {}".format(len(biostar_conv_dataframe)))
+
+
+# Split dataset into training and evaluation sets, but only for Galaxy conversations
+tr_index = 20
+final_index = 30 #len(galaxy_conv_dataframe)
+tr_conv = galaxy_conv_dataframe[:tr_index]
+eval_conv = galaxy_conv_dataframe[tr_index + 1: final_index]
+
+biostar_conv_dataframe = biostar_conv_dataframe[:20]
+# combine tr_conv with biostars data for training
+tr_conv = pd.concat([tr_conv, biostar_conv_dataframe], axis=0)
+
 print("Size of tr/te: {}/{}".format(len(tr_conv), len(eval_conv)))
 dataset = Dataset.from_pandas(tr_conv).train_test_split(test_size=0.2, seed=42)
 
 # Save evaluation dataset to a CSV file
 eval_conv.to_csv("../data/eval_dataset.csv", sep="\t", index=None)
+
+#sys.exit()
 
 # Load pre-trained model and tokenizer
 model_name = "NousResearch/Llama-2-7b-chat-hf"
@@ -86,7 +103,7 @@ trainer = SFTTrainer(
     eval_dataset=dataset['test'],
     peft_config=peft_config,
     dataset_text_field="conversations",
-    max_seq_length=700,
+    max_seq_length=max_token_size,
     tokenizer=tokenizer,
     args=training_arguments,
 )
