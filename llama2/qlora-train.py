@@ -21,14 +21,13 @@ biostar_conv_dataframe = biostar_conv_dataframe[biostar_conv_dataframe["tokens"]
 print("Size of Galaxy conversation data: {}".format(len(galaxy_conv_dataframe)))
 print("Size of Biostars conversation data: {}".format(len(biostar_conv_dataframe)))
 
-
 # Split dataset into training and evaluation sets, but only for Galaxy conversations
-tr_index = 20
-final_index = 30 #len(galaxy_conv_dataframe)
+tr_index = 1000
+final_index = len(galaxy_conv_dataframe)
 tr_conv = galaxy_conv_dataframe[:tr_index]
 eval_conv = galaxy_conv_dataframe[tr_index + 1: final_index]
 
-biostar_conv_dataframe = biostar_conv_dataframe[:20]
+#biostar_conv_dataframe = biostar_conv_dataframe[:20]
 # combine tr_conv with biostars data for training
 tr_conv = pd.concat([tr_conv, biostar_conv_dataframe], axis=0)
 
@@ -37,8 +36,6 @@ dataset = Dataset.from_pandas(tr_conv).train_test_split(test_size=0.2, seed=42)
 
 # Save evaluation dataset to a CSV file
 eval_conv.to_csv("../data/eval_dataset.csv", sep="\t", index=None)
-
-#sys.exit()
 
 # Load pre-trained model and tokenizer
 model_name = "NousResearch/Llama-2-7b-chat-hf"
@@ -68,7 +65,7 @@ end_time = time.time()
 refined_model.print_trainable_parameters()
 print(f"PEFT loading time: {end_time - start_time} seconds")
 
-base_dir = "llama-linear-layers-all-conv-Dec-08-02"
+base_dir = "llama-linear-layers-all-conv-Feb-07-24"
 
 print("Setting up Training arguments ...")
 
@@ -87,7 +84,7 @@ training_arguments = TrainingArguments(
     learning_rate=1e-4,
     fp16=True,
     max_grad_norm=0.3,
-    num_train_epochs=3,
+    num_train_epochs=5,
     warmup_ratio=0.03,
     lr_scheduler_type="constant",
     report_to="tensorboard"
